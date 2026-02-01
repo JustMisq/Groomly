@@ -1,0 +1,157 @@
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+
+export default function Home() {
+  return (
+    <main className="min-h-screen bg-white">
+      {/* Navigation */}
+      <nav className="border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">✂️</span>
+            <span className="text-xl font-bold text-gray-900">Groomly</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link href="/auth/login" className="text-gray-600 hover:text-gray-900">
+              Connexion
+            </Link>
+            <Link href="/auth/register">
+              <Button className="bg-primary hover:bg-primary/90">
+                Créer un compte
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold text-gray-900 mb-4">
+            Gérez votre salon de toilettage simplement
+          </h1>
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            Groomly vous aide à gérer vos clients, animaux, rendez-vous et paiements en un seul endroit.
+            Commencez gratuitement, pas de carte bancaire requise.
+          </p>
+          <Link href="/auth/register">
+            <Button className="bg-primary hover:bg-primary/90 px-8 py-3 text-lg">
+              Démarrer maintenant
+            </Button>
+          </Link>
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid md:grid-cols-3 gap-8 my-16">
+          {[
+            {
+              title: "Gestion des clients",
+              description: "Centralisez toutes les informations de vos clients et leurs animaux",
+              icon: "👥",
+            },
+            {
+              title: "Rendez-vous simplifié",
+              description: "Calendrier intuitif et rappels automatiques pour vos clients",
+              icon: "📅",
+            },
+            {
+              title: "Paiements sécurisés",
+              description: "Intégration Stripe pour des paiements rapides et sécurisés",
+              icon: "💳",
+            },
+            {
+              title: "Gestion des stocks",
+              description: "Suivez vos produits et matériels de toilettage",
+              icon: "📦",
+            },
+            {
+              title: "Portfolio photos",
+              description: "Mettez en avant vos plus beaux toilettages",
+              icon: "📸",
+            },
+            {
+              title: "Accès mobile",
+              description: "Gérez votre salon depuis votre téléphone, partout",
+              icon: "📱",
+            },
+          ].map((feature) => (
+            <div key={feature.title} className="p-6 border border-gray-200 rounded-lg hover:shadow-lg transition-shadow">
+              <div className="text-4xl mb-4">{feature.icon}</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {feature.title}
+              </h3>
+              <p className="text-gray-600">
+                {feature.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="bg-gray-50 py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+            Tarification simple et transparente
+          </h2>
+          
+          <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
+            {/* Monthly Plan */}
+            <div className="bg-white p-8 rounded-lg border border-gray-200 hover:shadow-lg transition-shadow">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Par mois</h3>
+              <p className="text-gray-600 mb-6">Parfait pour tester</p>
+              <div className="mb-6">
+                <span className="text-5xl font-bold text-gray-900">15€</span>
+                <span className="text-gray-600">/mois</span>
+              </div>
+              <ul className="space-y-4 mb-8 text-gray-700">
+                <li className="flex items-center gap-2">✓ Gestion illimitée de clients</li>
+                <li className="flex items-center gap-2">✓ Rendez-vous et calendrier</li>
+                <li className="flex items-center gap-2">✓ Gestion des stocks</li>
+                <li className="flex items-center gap-2">✓ Paiements Stripe</li>
+                <li className="flex items-center gap-2">✓ Support par email</li>
+              </ul>
+              <Link href="/auth/register?plan=monthly" className="w-full block">
+                <Button className="w-full bg-primary hover:bg-primary/90">
+                  Commencer
+                </Button>
+              </Link>
+            </div>
+
+            {/* Yearly Plan */}
+            <div className="bg-gradient-to-br from-primary to-secondary p-8 rounded-lg border border-transparent shadow-lg relative">
+              <div className="absolute top-4 right-4 bg-white text-primary px-3 py-1 rounded-full text-sm font-semibold">
+                -17% d&apos;économies
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Par an</h3>
+              <p className="text-white/80 mb-6">Meilleure offre</p>
+              <div className="mb-6">
+                <span className="text-5xl font-bold text-white">150€</span>
+                <span className="text-white/80">/an</span>
+              </div>
+              <ul className="space-y-4 mb-8 text-white">
+                <li className="flex items-center gap-2">✓ Gestion illimitée de clients</li>
+                <li className="flex items-center gap-2">✓ Rendez-vous et calendrier</li>
+                <li className="flex items-center gap-2">✓ Gestion des stocks</li>
+                <li className="flex items-center gap-2">✓ Paiements Stripe</li>
+                <li className="flex items-center gap-2">✓ Support prioritaire</li>
+              </ul>
+              <Link href="/auth/register?plan=yearly" className="w-full block">
+                <Button className="w-full bg-white text-primary hover:bg-gray-100">
+                  Commencer
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p>© 2026 Groomly. Tous droits réservés.</p>
+        </div>
+      </footer>
+    </main>
+  )
+}

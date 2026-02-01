@@ -1,0 +1,159 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  salon         Salon?
+  subscription  Subscription?
+}
+
+model Salon {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  phone         String?
+  address       String?
+  city          String?
+  postalCode    String?
+  email         String?
+  logo          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  clients       Client[]
+  services      Service[]
+  inventory     InventoryItem[]
+  appointments  Appointment[]
+}
+
+model Client {
+  id            String    @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String?
+  phone         String?
+  address       String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  salonId       String
+  salon         Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  
+  animals       Animal[]
+  appointments  Appointment[]
+  
+  @@index([salonId])
+}
+
+model Animal {
+  id            String    @id @default(cuid())
+  name          String
+  species       String    // dog, cat, etc.
+  breed         String?
+  color         String?
+  dateOfBirth   DateTime?
+  notes         String?
+  photo         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  clientId      String
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  appointments  Appointment[]
+  
+  @@index([clientId])
+}
+
+model Service {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  price         Float
+  duration      Int       // in minutes
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  salonId       String
+  salon         Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  
+  appointments  Appointment[]
+  
+  @@index([salonId])
+}
+
+model Appointment {
+  id            String    @id @default(cuid())
+  date          DateTime
+  startTime     DateTime
+  endTime       DateTime
+  notes         String?
+  status        String    @default("scheduled") // scheduled, completed, cancelled
+  totalPrice    Float
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  salonId       String
+  salon         Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  animalId      String
+  animal        Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  serviceId     String
+  service       Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  
+  @@index([salonId])
+  @@index([clientId])
+  @@index([animalId])
+  @@index([serviceId])
+}
+
+model InventoryItem {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  quantity      Int
+  unit          String    // ml, pieces, kg, etc.
+  price         Float
+  lastRestocked DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  salonId       String
+  salon         Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  
+  @@index([salonId])
+}
+
+model Subscription {
+  id            String    @id @default(cuid())
+  plan          String    @default("monthly") // monthly, yearly
+  price         Float
+  currency      String    @default("EUR")
+  status        String    @default("active") // active, cancelled, expired
+  stripeCustomerId String?
+  stripeSubscriptionId String?
+  currentPeriodStart DateTime
+  currentPeriodEnd DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
