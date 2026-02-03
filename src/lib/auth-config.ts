@@ -58,12 +58,14 @@ export const authConfig = {
       if (user) {
         token.id = user.id
       }
+      console.log('JWT Callback - Token:', token.id, 'User:', user?.id)
       return token
     },
     session({ session, token }: any) {
       if (session.user) {
         session.user.id = token.id as string
       }
+      console.log('Session Callback - User ID:', session.user?.id, 'Token ID:', token.id)
       return session
     },
   },

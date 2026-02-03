@@ -1,17 +1,15 @@
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
 
   useEffect(() => {
@@ -35,57 +33,5 @@ export default function DashboardLayout({
     return null
   }
 
-  return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">✂️</span>
-            <span className="text-lg font-bold text-gray-900">Groomly</span>
-          </div>
-        </div>
-
-        <nav className="p-6 space-y-2">
-          <NavLink href="/dashboard" label="Tableau de bord" icon="📊" />
-          <NavLink href="/dashboard/salon" label="Mon salon" icon="🏪" />
-          <NavLink href="/dashboard/clients" label="Clients" icon="👥" />
-          <NavLink href="/dashboard/appointments" label="Rendez-vous" icon="📅" />
-          <NavLink href="/dashboard/inventory" label="Stocks" icon="📦" />
-          <NavLink href="/dashboard/settings" label="Paramètres" icon="⚙️" />
-        </nav>
-
-        <div className="absolute bottom-0 left-0 w-64 p-6 border-t border-gray-200">
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
-            <p className="text-sm text-gray-600">Connecté en tant que</p>
-            <p className="font-semibold text-gray-900">{session?.user?.name}</p>
-            <p className="text-xs text-gray-500">{session?.user?.email}</p>
-          </div>
-          <Button
-            onClick={() => signOut({ redirect: true, callbackUrl: '/' })}
-            className="w-full bg-red-500 hover:bg-red-600"
-          >
-            Déconnexion
-          </Button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
-    </div>
-  )
-}
-
-function NavLink({ href, label, icon }: { href: string; label: string; icon: string }) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 px-4 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-    >
-      <span className="text-lg">{icon}</span>
-      <span>{label}</span>
-    </Link>
-  )
+  return children
 }

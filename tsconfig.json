@@ -30,8 +30,9 @@
     ],
     "allowJs": true,
     "noEmit": true,
-    "moduleResolution": "node",
-    "isolatedModules": true
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "ignoreDeprecations": "5.0"
   },
   "include": [
     "next-env.d.ts",

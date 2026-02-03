@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import toast from 'react-hot-toast'
@@ -12,6 +12,17 @@ export default function SubscriptionPage() {
 
   const success = searchParams.get('success')
   const canceled = searchParams.get('canceled')
+
+  // Rediriger vers le dashboard après paiement réussi
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        router.push('/dashboard')
+      }, 3000) // Attendre 3 secondes pour voir le message de succès
+      
+      return () => clearTimeout(timer)
+    }
+  }, [success, router])
 
   const handleCheckout = async (priceId: string, planName: string) => {
     setLoading(true)
@@ -47,7 +58,7 @@ export default function SubscriptionPage() {
       {success && (
         <div className="mb-8 p-4 bg-green-50 border border-green-200 rounded-lg">
           <p className="text-green-800">
-            ✅ Paiement réussi! Votre abonnement est activé.
+            ✅ Paiement réussi! Votre abonnement est activé. Redirection en cours...
           </p>
         </div>
       )}

@@ -31,6 +31,12 @@ export async function POST(request: NextRequest) {
         name,
         email,
         password: hashedPassword,
+        // Créer automatiquement un salon vide
+        salon: {
+          create: {
+            name: `Salon de ${name}`,
+          }
+        }
       },
     })
 

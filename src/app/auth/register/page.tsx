@@ -48,7 +48,7 @@ export default function RegisterPage() {
       }
 
       toast.success('Compte créé avec succès!')
-      router.push('/auth/login')
+      router.push('/dashboard/onboarding')
     } catch (error) {
       toast.error('Une erreur est survenue')
     } finally {
