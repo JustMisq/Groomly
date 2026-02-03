@@ -158,7 +158,11 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, name, species, breed, color, dateOfBirth, notes } = body
+    const { 
+      id, name, species, breed, color, dateOfBirth, notes,
+      // Nouveaux champs santé
+      temperament, allergies, healthNotes, groomingNotes, weight 
+    } = body
 
     if (!id) {
       return NextResponse.json(
@@ -193,6 +197,12 @@ export async function PUT(request: NextRequest) {
         color: color !== undefined ? color : animal.color,
         dateOfBirth: dateOfBirth !== undefined ? (dateOfBirth ? new Date(dateOfBirth) : null) : animal.dateOfBirth,
         notes: notes !== undefined ? notes : animal.notes,
+        // Nouveaux champs santé
+        temperament: temperament !== undefined ? temperament : animal.temperament,
+        allergies: allergies !== undefined ? allergies : animal.allergies,
+        healthNotes: healthNotes !== undefined ? healthNotes : animal.healthNotes,
+        groomingNotes: groomingNotes !== undefined ? groomingNotes : animal.groomingNotes,
+        weight: weight !== undefined ? weight : animal.weight,
       },
     })
 

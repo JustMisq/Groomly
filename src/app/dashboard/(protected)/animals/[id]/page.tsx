@@ -16,6 +16,12 @@ interface Animal {
   notes?: string
   createdAt: string
   clientId: string
+  // Nouveaux champs santé
+  temperament?: string
+  allergies?: string
+  healthNotes?: string
+  groomingNotes?: string
+  weight?: number
 }
 
 interface Client {
@@ -44,7 +50,15 @@ export default function AnimalDetailPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [editingNotes, setEditingNotes] = useState(false)
+  const [editingHealth, setEditingHealth] = useState(false)
   const [animalNotes, setAnimalNotes] = useState('')
+  const [healthData, setHealthData] = useState({
+    temperament: '',
+    allergies: '',
+    healthNotes: '',
+    groomingNotes: '',
+    weight: '',
+  })
 
   useEffect(() => {
     fetchAnimalDetails()
@@ -58,6 +72,13 @@ export default function AnimalDetailPage() {
         const animalData = await animalRes.json()
         setAnimal(animalData)
         setAnimalNotes(animalData.notes || '')
+        setHealthData({
+          temperament: animalData.temperament || '',
+          allergies: animalData.allergies || '',
+          healthNotes: animalData.healthNotes || '',
+          groomingNotes: animalData.groomingNotes || '',
+          weight: animalData.weight?.toString() || '',
+        })
 
         // Charger le client
         if (animalData.clientId) {
@@ -109,6 +130,66 @@ export default function AnimalDetailPage() {
       console.error('Error:', error)
       toast.error('Une erreur est survenue')
     }
+  }
+
+  const handleSaveHealth = async () => {
+    try {
+      const res = await fetch('/api/animals', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: animalId,
+          temperament: healthData.temperament || null,
+          allergies: healthData.allergies || null,
+          healthNotes: healthData.healthNotes || null,
+          groomingNotes: healthData.groomingNotes || null,
+          weight: healthData.weight ? parseFloat(healthData.weight) : null,
+        }),
+      })
+
+      if (res.ok) {
+        toast.success('Informations santé sauvegardées!')
+        setEditingHealth(false)
+        if (animal) {
+          setAnimal({
+            ...animal,
+            temperament: healthData.temperament,
+            allergies: healthData.allergies,
+            healthNotes: healthData.healthNotes,
+            groomingNotes: healthData.groomingNotes,
+            weight: healthData.weight ? parseFloat(healthData.weight) : undefined,
+          })
+        }
+      } else {
+        toast.error('Erreur lors de la sauvegarde')
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Une erreur est survenue')
+    }
+  }
+
+  const getTemperamentBadge = (temperament: string) => {
+    const badges: Record<string, { color: string; emoji: string }> = {
+      calm: { color: 'bg-green-100 text-green-700', emoji: '😊' },
+      nervous: { color: 'bg-yellow-100 text-yellow-700', emoji: '😰' },
+      aggressive: { color: 'bg-red-100 text-red-700', emoji: '⚠️' },
+      playful: { color: 'bg-blue-100 text-blue-700', emoji: '🎾' },
+      fearful: { color: 'bg-purple-100 text-purple-700', emoji: '😨' },
+    }
+    const labels: Record<string, string> = {
+      calm: 'Calme',
+      nervous: 'Nerveux',
+      aggressive: 'Agressif',
+      playful: 'Joueur',
+      fearful: 'Craintif',
+    }
+    const badge = badges[temperament] || { color: 'bg-gray-100 text-gray-700', emoji: '' }
+    return (
+      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${badge.color}`}>
+        {badge.emoji} {labels[temperament] || temperament}
+      </span>
+    )
   }
 
   if (loading) {
@@ -173,11 +254,147 @@ export default function AnimalDetailPage() {
               {new Date(animal.dateOfBirth).toLocaleDateString('fr-FR')}
             </p>
           )}
+          {animal.weight && (
+            <p className="text-gray-700">
+              <span className="font-medium">Poids :</span> {animal.weight} kg
+            </p>
+          )}
           <p className="text-gray-700">
             <span className="font-medium">Enregistré :</span>{' '}
             {new Date(animal.createdAt).toLocaleDateString('fr-FR')}
           </p>
         </div>
+      </div>
+
+      {/* Santé & Comportement */}
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-red-900">🏥 Santé & Comportement</h2>
+          <Button
+            onClick={() => setEditingHealth(!editingHealth)}
+            className={`${
+              editingHealth
+                ? 'bg-gray-500 hover:bg-gray-600'
+                : 'bg-red-500 hover:bg-red-600'
+            } text-white`}
+          >
+            {editingHealth ? '❌ Annuler' : '✏️ Modifier'}
+          </Button>
+        </div>
+
+        {editingHealth ? (
+          <div className="space-y-4 bg-white p-4 rounded-lg">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tempérament
+              </label>
+              <select
+                value={healthData.temperament}
+                onChange={(e) => setHealthData({ ...healthData, temperament: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+              >
+                <option value="">Sélectionner...</option>
+                <option value="calm">😊 Calme</option>
+                <option value="playful">🎾 Joueur</option>
+                <option value="nervous">😰 Nerveux</option>
+                <option value="fearful">😨 Craintif</option>
+                <option value="aggressive">⚠️ Agressif</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Poids (kg)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                value={healthData.weight}
+                onChange={(e) => setHealthData({ ...healthData, weight: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                placeholder="Ex: 8.5"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Allergies connues
+              </label>
+              <input
+                type="text"
+                value={healthData.allergies}
+                onChange={(e) => setHealthData({ ...healthData, allergies: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                placeholder="Ex: Allergie aux shampooings parfumés"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notes de santé
+              </label>
+              <textarea
+                value={healthData.healthNotes}
+                onChange={(e) => setHealthData({ ...healthData, healthNotes: e.target.value })}
+                rows={2}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none resize-none"
+                placeholder="Problèmes de santé, traitements en cours..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Préférences de toilettage
+              </label>
+              <textarea
+                value={healthData.groomingNotes}
+                onChange={(e) => setHealthData({ ...healthData, groomingNotes: e.target.value })}
+                rows={2}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none resize-none"
+                placeholder="Coupe préférée, zones sensibles..."
+              />
+            </div>
+            <Button
+              onClick={handleSaveHealth}
+              className="bg-green-500 hover:bg-green-600 text-white w-full"
+            >
+              ✅ Sauvegarder
+            </Button>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-600">Tempérament :</span>
+              {animal.temperament ? (
+                getTemperamentBadge(animal.temperament)
+              ) : (
+                <span className="text-gray-400 italic">Non renseigné</span>
+              )}
+            </div>
+            {animal.weight && (
+              <p className="text-gray-700">
+                <span className="font-medium">Poids :</span> {animal.weight} kg
+              </p>
+            )}
+            {animal.allergies && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                <p className="text-sm font-medium text-yellow-800">⚠️ Allergies :</p>
+                <p className="text-yellow-700">{animal.allergies}</p>
+              </div>
+            )}
+            {animal.healthNotes && (
+              <div>
+                <p className="text-sm font-medium text-gray-600">Notes de santé :</p>
+                <p className="text-gray-700">{animal.healthNotes}</p>
+              </div>
+            )}
+            {animal.groomingNotes && (
+              <div>
+                <p className="text-sm font-medium text-gray-600">Préférences de toilettage :</p>
+                <p className="text-gray-700">{animal.groomingNotes}</p>
+              </div>
+            )}
+            {!animal.temperament && !animal.allergies && !animal.healthNotes && !animal.groomingNotes && (
+              <p className="text-gray-400 italic">Aucune information santé renseignée</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Suivi & Notes */}

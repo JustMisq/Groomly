@@ -12,11 +12,17 @@ model User {
   email         String    @unique
   password      String
   name          String
+  role          String    @default("owner") // owner, staff, readonly
+  isAdmin       Boolean   @default(false)   // Admin du SaaS (peut voir les tickets)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime? // Soft delete
   
   salon         Salon?
   subscription  Subscription?
+  auditLogs     AuditLog[]
+  salonMembers  SalonMember[]
+  supportTickets SupportTicket[]
 }
 
 model Salon {
@@ -29,6 +35,15 @@ model Salon {
   postalCode    String?
   email         String?
   logo          String?
+  
+  // Informations légales (obligatoires pour facturation)
+  siret         String?   // Numéro SIRET
+  tvaNumber     String?   // Numéro TVA intracommunautaire
+  legalName     String?   // Raison sociale
+  legalForm     String?   // Forme juridique (SARL, SAS, EI, etc.)
+  invoiceTerms  String?   // Conditions de paiement sur factures
+  invoiceNotes  String?   // Notes légales sur factures
+  
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
@@ -40,6 +55,8 @@ model Salon {
   inventory     InventoryItem[]
   appointments  Appointment[]
   invoices      Invoice[]
+  auditLogs     AuditLog[]
+  members       SalonMember[]
 }
 
 model Client {
@@ -49,9 +66,11 @@ model Client {
   email         String?
   phone         String?
   address       String?
-  notes         String?
+  notes         String?   // Notes internes visibles staff
+  privateNotes  String?   // Notes confidentielles (owner only)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime? // Soft delete
   
   salonId       String
   salon         Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
@@ -61,6 +80,7 @@ model Client {
   invoices      Invoice[]
   
   @@index([salonId])
+  @@index([deletedAt])
 }
 
 model Animal {
@@ -69,11 +89,21 @@ model Animal {
   species       String    // dog, cat, etc.
   breed         String?
   color         String?
+  weight        Float?    // Poids en kg
   dateOfBirth   DateTime?
   notes         String?
   photo         String?
+  
+  // Fiche santé/comportement (non médical)
+  temperament   String?   // calme, anxieux, joueur, agressif
+  allergies     String?   // Allergies connues (shampoings, etc.)
+  healthNotes   String?   // Contraintes santé (arthrose, sensibilité peau, etc.)
+  groomingNotes String?   // Préférences toilettage (coupe spéciale, zones sensibles)
+  lastGrooming  DateTime? // Dernier toilettage
+  
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime? // Soft delete
   
   clientId      String
   client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -81,6 +111,7 @@ model Animal {
   appointments  Appointment[]
   
   @@index([clientId])
+  @@index([deletedAt])
 }
 
 model Service {
@@ -110,11 +141,16 @@ model Appointment {
   date          DateTime
   startTime     DateTime
   endTime       DateTime
-  notes         String?
-  status        String    @default("scheduled") // scheduled, completed, cancelled
+  notes         String?   // Notes visibles client
+  internalNotes String?   // Notes internes staff uniquement
+  status        String    @default("scheduled") // scheduled, confirmed, in_progress, completed, cancelled, no_show
+  cancellationReason String? // Raison annulation
+  cancelledAt   DateTime? // Date annulation
+  isLateCancel  Boolean   @default(false) // Annulation tardive (< 24h)
   totalPrice    Float
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime? // Soft delete
   
   salonId       String
   salon         Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
@@ -130,6 +166,8 @@ model Appointment {
   @@index([clientId])
   @@index([animalId])
   @@index([serviceId])
+  @@index([status])
+  @@index([deletedAt])
 }
 
 model InventoryItem {
@@ -173,10 +211,13 @@ model Invoice {
   taxRate       Float     @default(20)  // TVA %
   taxAmount     Float     // Montant TVA
   total         Float     // Total TTC
-  status        String    @default("draft")  // draft, sent, paid, cancelled
+  status        String    @default("draft")  // draft, sent, paid, cancelled, overdue
   paidAt        DateTime?
+  dueDate       DateTime? // Date d'échéance
+  paymentMethod String?   // cash, card, transfer, check
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime? // Soft delete
   
   salonId       String
   salon         Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
@@ -188,4 +229,160 @@ model Invoice {
   @@index([salonId])
   @@index([clientId])
   @@index([appointmentId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+// Audit log minimal pour traçabilité
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String   // create, update, delete, cancel, no_show, payment
+  entityType  String   // client, animal, appointment, invoice
+  entityId    String
+  oldValue    String?  // JSON des anciennes valeurs (pour update/delete)
+  newValue    String?  // JSON des nouvelles valeurs
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salonId     String
+  salon       Salon    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  
+  @@index([salonId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// Rappels automatiques (emails, SMS)
+model Reminder {
+  id            String    @id @default(cuid())
+  type          String    // appointment_24h, appointment_1h, invoice_overdue
+  channel       String    @default("email") // email, sms
+  scheduledFor  DateTime
+  sentAt        DateTime?
+  status        String    @default("pending") // pending, sent, failed, cancelled
+  error         String?
+  
+  appointmentId String?
+  invoiceId     String?
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([scheduledFor, status])
+}
+
+// ============================================
+// SYSTÈME DE RÔLES POUR LES SALONS
+// ============================================
+
+// Membres du salon avec leurs rôles
+model SalonMember {
+  id            String    @id @default(cuid())
+  role          String    @default("staff") // owner, admin, staff, readonly
+  firstName     String?
+  lastName      String?
+  phone         String?
+  invitedAt     DateTime  @default(now())
+  acceptedAt    DateTime?
+  status        String    @default("pending") // pending, active, revoked
+  
+  // Permissions personnalisées (optionnel, override du rôle)
+  canManageClients      Boolean  @default(true)
+  canManageAnimals      Boolean  @default(true)
+  canManageAppointments Boolean  @default(true)
+  canManageServices     Boolean  @default(true)
+  canManageInventory    Boolean  @default(true)
+  canViewReports        Boolean  @default(false)
+  canManageBilling      Boolean  @default(false)
+  canManageSettings     Boolean  @default(false)
+  canManageMembers      Boolean  @default(false)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // L'utilisateur invité (peut être null si invitation en attente)
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // Le salon auquel il appartient
+  salonId       String
+  salon         Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  
+  // Email d'invitation (si pas encore accepté)
+  inviteEmail   String?
+  inviteToken   String?   @unique
+  
+  @@unique([userId, salonId])
+  @@index([salonId])
+  @@index([inviteToken])
+  @@index([status])
+}
+
+// ============================================
+// SYSTÈME DE TICKETS DE SUPPORT
+// ============================================
+
+// Tickets de support
+model SupportTicket {
+  id            String    @id @default(cuid())
+  ticketNumber  String    @unique  // TKT-2025-001
+  subject       String
+  description   String    // Description initiale du problème
+  category      String    @default("general") // general, billing, technical, feature_request, bug
+  priority      String    @default("normal") // low, normal, high, urgent
+  status        String    @default("open") // open, in_progress, waiting_customer, resolved, closed
+  
+  // Métadonnées
+  browser       String?
+  os            String?
+  appVersion    String?
+  
+  resolvedAt    DateTime?
+  closedAt      DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // L'utilisateur qui a créé le ticket
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Optionnel: le salon concerné
+  salonId       String?
+  
+  // Messages du ticket
+  messages      TicketMessage[]
+  
+  // Assignation staff
+  assignedToId  String?
+  
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+// Messages dans un ticket
+model TicketMessage {
+  id            String    @id @default(cuid())
+  content       String
+  isStaffReply  Boolean   @default(false) // true si réponse du staff SaaS
+  isInternal    Boolean   @default(false) // Note interne (non visible par l'utilisateur)
+  
+  // Pièces jointes (URLs)
+  attachments   String[]
+  
+  createdAt     DateTime  @default(now())
+  
+  ticketId      String
+  ticket        SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  // Auteur du message
+  authorId      String
+  authorName    String    // Nom affiché (peut être "Support Groomly" pour le staff)
+  
+  @@index([ticketId])
+  @@index([createdAt])
 }

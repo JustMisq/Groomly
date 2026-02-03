@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 import toast from 'react-hot-toast'
 
 interface Invoice {
@@ -149,6 +150,54 @@ export default function ReportsPage() {
     a.click()
   }
 
+  const exportAccounting = async (format: 'csv' | 'fec') => {
+    try {
+      const params = new URLSearchParams({ format })
+      if (dateRange.start) params.append('startDate', dateRange.start)
+      if (dateRange.end) params.append('endDate', dateRange.end)
+      
+      const res = await fetch(`/api/export/accounting?${params}`)
+      if (!res.ok) {
+        toast.error('Erreur lors de l\'export')
+        return
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `export-comptable-${format}-${new Date().toISOString().split('T')[0]}.${format === 'fec' ? 'txt' : 'csv'}`
+      a.click()
+      toast.success(`Export ${format.toUpperCase()} téléchargé`)
+    } catch (error) {
+      toast.error('Erreur lors de l\'export')
+    }
+  }
+
+  const downloadPDF = async (invoiceId: string, invoiceNumber: string) => {
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}/pdf`)
+      if (!res.ok) {
+        toast.error('Erreur lors de la génération du PDF')
+        return
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `facture-${invoiceNumber}.html`
+      a.click()
+      toast.success('Facture téléchargée')
+    } catch (error) {
+      toast.error('Erreur lors du téléchargement')
+    }
+  }
+
+  const openPDFPreview = (invoiceId: string) => {
+    window.open(`/api/invoices/${invoiceId}/pdf`, '_blank')
+  }
+
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
@@ -163,14 +212,43 @@ export default function ReportsPage() {
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Rapports & Factures</h1>
-        <Button
-          onClick={exportCSV}
-          disabled={filteredInvoices.length === 0}
-          className="bg-green-500 hover:bg-green-600 text-white"
-        >
-          📥 Exporter CSV
-        </Button>
+        <h1 className="text-3xl font-bold text-gray-900">📊 Rapports & Factures</h1>
+        <div className="flex gap-3 flex-wrap">
+          <Link href="/dashboard/appointments">
+            <Button className="bg-green-500 hover:bg-green-600 text-white">
+              ➕ Créer une facture
+            </Button>
+          </Link>
+          <Button
+            onClick={exportCSV}
+            disabled={filteredInvoices.length === 0}
+            className="bg-blue-500 hover:bg-blue-600 text-white"
+          >
+            📥 Exporter CSV
+          </Button>
+          <div className="relative group">
+            <Button
+              disabled={filteredInvoices.length === 0}
+              className="bg-indigo-500 hover:bg-indigo-600 text-white"
+            >
+              📋 Export comptable ▾
+            </Button>
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <button
+                onClick={() => exportAccounting('csv')}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 rounded-t-lg"
+              >
+                📄 Format CSV (Excel)
+              </button>
+              <button
+                onClick={() => exportAccounting('fec')}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 rounded-b-lg"
+              >
+                🏛️ Format FEC (Comptable)
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Statistiques */}
@@ -263,8 +341,25 @@ export default function ReportsPage() {
       {/* Liste des factures */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         {filteredInvoices.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-gray-500">Aucune facture trouvée</p>
+          <div className="p-12 text-center bg-gradient-to-br from-blue-50 to-indigo-50">
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">📄 Aucune facture pour le moment</h3>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              Les factures sont créées automatiquement lorsque vous planifiez un rendez-vous avec un client.
+            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600 font-medium">Voici comment faire :</p>
+              <ol className="text-left inline-block space-y-2 text-sm text-gray-600">
+                <li>1️⃣ Allez à <strong>Rendez-vous</strong></li>
+                <li>2️⃣ Créez un nouveau rendez-vous</li>
+                <li>3️⃣ Sélectionnez le client, l&apos;animal et le service</li>
+                <li>4️⃣ Confirmez - une facture sera créée automatiquement</li>
+              </ol>
+            </div>
+            <Link href="/dashboard/appointments" className="mt-8 inline-block">
+              <Button className="bg-green-500 hover:bg-green-600 text-white px-6">
+                📅 Aller aux rendez-vous →
+              </Button>
+            </Link>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -321,12 +416,29 @@ export default function ReportsPage() {
                       </select>
                     </td>
                     <td className="px-6 py-4">
-                      <Button
-                        onClick={() => handleDelete(invoice.id)}
-                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 text-sm"
-                      >
-                        🗑️
-                      </Button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => openPDFPreview(invoice.id)}
+                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition-colors"
+                          title="Voir la facture"
+                        >
+                          👁️
+                        </button>
+                        <button
+                          onClick={() => downloadPDF(invoice.id, invoice.invoiceNumber)}
+                          className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200 transition-colors"
+                          title="Télécharger PDF"
+                        >
+                          📄
+                        </button>
+                        <button
+                          onClick={() => handleDelete(invoice.id)}
+                          className="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200 transition-colors"
+                          title="Supprimer"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
