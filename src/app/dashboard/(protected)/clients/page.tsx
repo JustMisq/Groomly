@@ -62,7 +62,17 @@ export default function ClientsPage() {
       })
 
       if (!res.ok) {
+        const errorData = await res.json()
+        
+        // Message d'erreur spécifique pour salon manquant
+        if (errorData.error === 'NO_SALON') {
+          toast.error('❌ Créez d\'abord votre salon en cliquant sur "Salon" dans le menu')
+          setLoading(false)
+          return
+        }
+        
         toast.error('Erreur lors de la création du client')
+        setLoading(false)
         return
       }
 
@@ -71,6 +81,7 @@ export default function ClientsPage() {
       setShowForm(false)
       fetchClients()
     } catch (error) {
+      console.error('Error:', error)
       toast.error('Une erreur est survenue')
     } finally {
       setLoading(false)

@@ -386,7 +386,7 @@ export default function ClientDetailsPage() {
                 type="submit"
                 className="w-full bg-primary hover:bg-primary/90"
               >
-                Ajouter l'animal
+                Ajouter l&apos;animal
               </Button>
             </form>
           </div>

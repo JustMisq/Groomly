@@ -1,19 +1,24 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authConfig } from '@/lib/auth-config'
 import { prisma } from '@/lib/prisma'
 
+interface RouteParams {
+  params: Promise<{
+    id: string
+  }>
+}
+
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: RouteParams
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authConfig)
     if (!session?.user?.id) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
-
-    const clientId = params.id
 
     // Vérifier que le client appartient au salon de l'utilisateur
     const salon = await prisma.salon.findUnique({
@@ -29,7 +34,7 @@ export async function GET(
 
     const client = await prisma.client.findFirst({
       where: {
-        id: clientId,
+        id,
         salonId: salon.id,
       },
     })

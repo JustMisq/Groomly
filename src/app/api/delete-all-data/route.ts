@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (salon) {
-      // Supprimer toutes les données du salon en cascade
+      // Supprimer toutes les données du salon en cascade (mais PAS le salon lui-même)
       await Promise.all([
         prisma.invoice.deleteMany({ where: { salonId: salon.id } }),
         prisma.appointment.deleteMany({ where: { salonId: salon.id } }),
@@ -59,12 +59,12 @@ export async function POST(request: NextRequest) {
           },
         }),
         prisma.client.deleteMany({ where: { salonId: salon.id } }),
-        prisma.salon.delete({ where: { id: salon.id } }),
+        // ✅ NE PAS supprimer le salon - on garde la structure du compte
       ])
     }
 
     return NextResponse.json({
-      message: 'All data deleted successfully',
+      message: 'All business data deleted successfully. Your salon structure remains.',
     })
   } catch (error) {
     console.error('Delete data error:', error)

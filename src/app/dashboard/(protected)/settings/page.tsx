@@ -372,15 +372,16 @@ export default function SettingsPage() {
           
           {/* Supprimer toutes les données */}
           <div className="bg-white p-4 rounded border border-red-300">
-            <h3 className="font-bold text-red-700 mb-2">🗑️ Supprimer toutes les données</h3>
+            <h3 className="font-bold text-red-700 mb-2">🗑️ Supprimer toutes les données commerciales</h3>
             <p className="text-sm text-gray-600 mb-3">
-              Supprimera tous les clients, rendez-vous, factures, services et stocks. Le compte reste actif.
+              Supprimera tous les clients, animaux, rendez-vous, factures, services et stocks.<br/>
+              <span className="font-medium text-green-700">✓ Votre salon et votre compte restent actifs.</span>
             </p>
             <Button
               onClick={() => setShowDeleteDataModal(true)}
               className="bg-red-500 hover:bg-red-600 text-white"
             >
-              Supprimer toutes les données
+              Supprimer les données
             </Button>
           </div>
 
@@ -417,8 +418,8 @@ export default function SettingsPage() {
       {/* Modals */}
       <DeleteModal
         isOpen={showDeleteDataModal}
-        title="Supprimer toutes les données"
-        message="Ceci va supprimer :\n• Tous les clients\n• Tous les rendez-vous\n• Toutes les factures\n• Tous les services\n• Tout l'inventaire\n\nVotre compte restera actif."
+        title="Supprimer toutes les données commerciales"
+        message={"Ceci va supprimer :\n• Tous les clients\n• Tous les animaux\n• Tous les rendez-vous\n• Toutes les factures\n• Tous les services\n• Tout l'inventaire\n\n✓ Votre salon et votre compte restent actifs\n✓ Vous pourrez continuer à utiliser Groomly"}
         confirmText="Confirmer"
         warningText="Cette action est IRRÉVERSIBLE"
         requirePassword={true}
