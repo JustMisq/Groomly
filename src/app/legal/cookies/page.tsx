@@ -187,13 +187,13 @@ export default function CookiesPage() {
             <p className="text-xs text-blue-700 font-semibold mb-1">⚠️ Cookie analytique - Consentement requis</p>
             <p className="text-gray-700 text-xs"><a href="https://policies.google.com/privacy" className="text-primary hover:underline">Politique Cookies Google</a></p>
           </div>
-green-500 pl-4">
+
+          <div className="border-l-4 border-green-500 pl-4">
             <h4 className="font-semibold text-gray-900">🔐 Cloudflare (CDN/Sécurité)</h4>
             <p className="text-gray-700 text-sm mb-2">
               Assure la sécurité, la performance et la protection contre les attaques DDoS
             </p>
-            <p className="text-xs text-green-700 font-semibold mb-1">✓ Cookie essentiel - Pas de consentement requis  Pour la sécurité et la performance du site
-            </p>
+            <p className="text-xs text-green-700 font-semibold mb-1">✓ Cookie essentiel - Pas de consentement requis</p>
             <p className="text-gray-700 text-xs"><a href="https://www.cloudflare.com/cookie-policy/" className="text-primary hover:underline">Politique Cookies Cloudflare</a></p>
           </div>
         </div>

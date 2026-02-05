@@ -7,10 +7,14 @@ import bcrypt from "bcryptjs"
 declare module "next-auth" {
   interface User {
     id: string
+    email: string
+    name: string
+    isAdmin?: boolean
   }
   interface Session {
     user: User & {
       id: string
+      isAdmin?: boolean
     }
   }
 }
@@ -49,6 +53,7 @@ export const authConfig = {
           id: user.id,
           email: user.email,
           name: user.name,
+          isAdmin: user.isAdmin,
         }
       },
     }),
@@ -57,6 +62,7 @@ export const authConfig = {
     jwt({ token, user }: any) {
       if (user) {
         token.id = user.id
+        token.isAdmin = user.isAdmin || false
       }
       console.log('JWT Callback - Token:', token.id, 'User:', user?.id)
       return token
@@ -64,6 +70,7 @@ export const authConfig = {
     session({ session, token }: any) {
       if (session.user) {
         session.user.id = token.id as string
+        session.user.isAdmin = token.isAdmin as boolean
       }
       console.log('Session Callback - User ID:', session.user?.id, 'Token ID:', token.id)
       return session

@@ -57,6 +57,7 @@ model Salon {
   invoices      Invoice[]
   auditLogs     AuditLog[]
   members       SalonMember[]
+  supportTickets SupportTicket[]
 }
 
 model Client {
@@ -351,6 +352,7 @@ model SupportTicket {
   
   // Optionnel: le salon concerné
   salonId       String?
+  salon         Salon?    @relation(fields: [salonId], references: [id], onDelete: SetNull)
   
   // Messages du ticket
   messages      TicketMessage[]
@@ -359,6 +361,7 @@ model SupportTicket {
   assignedToId  String?
   
   @@index([userId])
+  @@index([salonId])
   @@index([status])
   @@index([priority])
   @@index([createdAt])
@@ -384,5 +387,159 @@ model TicketMessage {
   authorName    String    // Nom affiché (peut être "Support Groomly" pour le staff)
   
   @@index([ticketId])
+  @@index([createdAt])
+}
+
+// ============================================
+// SYSTÈME DE LOGGING & MONITORING
+// ============================================
+
+// Tracking des erreurs en production
+model ErrorLog {
+  id            String    @id @default(cuid())
+  
+  // Information erreur
+  message       String    // Message d'erreur
+  stack         String?   // Stack trace
+  severity      String    @default("error") // error, warning, critical
+  
+  // Contexte
+  userId        String?   // User concerné (si applicable)
+  salonId       String?   // Salon concerné (si applicable)
+  
+  // Page/Route  
+  url           String?   // URL où l'erreur s'est produite
+  method        String?   // GET, POST, etc.
+  
+  // Métadonnées
+  userAgent     String?
+  ipAddress     String?
+  
+  resolved      Boolean   @default(false)
+  resolvedAt    DateTime?
+  resolvedBy    String?   // ID du staff qui a résolu
+  notes         String?   // Notes du staff
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([salonId])
+  @@index([severity])
+  @@index([resolved])
+  @@index([createdAt])
+}
+
+// Tracking des activités utilisateur (pour rapports & support)
+model ActivityLog {
+  id            String    @id @default(cuid())
+  
+  // Type d'activité
+  action        String    // create, update, delete, login, logout, import, export, view, etc.
+  resource      String    // User, Client, Animal, Appointment, Invoice, Service, etc.
+  
+  // Identifiants
+  userId        String
+  resourceId    String?   // ID de la ressource concernée (client.id, appointment.id, etc.)
+  salonId       String?   // Salon concerné
+  
+  // Détails changements (pour updates)
+  oldValue      String?   // JSON de l'ancienne valeur
+  newValue      String?   // JSON de la nouvelle valeur
+  
+  // Métadonnées
+  ipAddress     String?
+  userAgent     String?
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([salonId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+}
+
+// Interactions avec les users (messages, support, features/bugs mentionnés)
+model UserInteraction {
+  id            String    @id @default(cuid())
+  
+  // Type interaction
+  type          String    // support_ticket, feature_request, bug_report, feedback, question, etc.
+  subject       String?   // Sujet court
+  description   String    // Description détaillée
+  
+  // Contexte
+  userId        String
+  salonId       String?   // Salon concerné (si applicable)
+  
+  // Statut
+  status        String    @default("open") // open, in_progress, resolved, archived
+  resolved      Boolean   @default(false)
+  resolvedAt    DateTime?
+  
+  // Follow-up
+  requiresReply Boolean   @default(false)
+  lastReplyAt   DateTime?
+  replied       Boolean   @default(false)
+  
+  // Métadonnées
+  priority      String    @default("normal") // low, normal, high, urgent
+  tags          String[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([salonId])
+  @@index([type])
+  @@index([status])
+  @@index([requiresReply])
+  @@index([createdAt])
+}
+
+// Feature usage tracking (pour rapports d'utilisation)
+model FeatureUsageLog {
+  id            String    @id @default(cuid())
+  
+  // Feature utilisée
+  featureName   String    // appointments, invoicing, staff_management, etc.
+  action        String    // view, create, update, export, report, etc.
+  
+  // User & Salon
+  userId        String
+  salonId       String
+  
+  // Durée/Métadonnées
+  duration      Int?      // Durée en secondes
+  itemCount     Int?      // Nombre d'items créés/modifiés
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([salonId])
+  @@index([featureName])
+  @@index([createdAt])
+}
+
+// Performance metrics (pour identifier les problèmes)
+model PerformanceMetric {
+  id            String    @id @default(cuid())
+  
+  // Métrique
+  metric        String    // api_response_time, page_load_time, db_query_time, etc.
+  value         Float     // Valeur en ms
+  endpoint      String?   // Pour API: GET /api/clients
+  
+  // Contexte
+  userId        String?   // User concerné (si applicable)
+  salonId       String?   // Salon concerné
+  
+  // Seuils
+  isSlowQuery   Boolean   @default(false)
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([metric])
+  @@index([isSlowQuery])
   @@index([createdAt])
 }
