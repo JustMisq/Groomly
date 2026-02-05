@@ -32,6 +32,11 @@ export async function GET(request: NextRequest) {
             email: true,
           },
         },
+        salon: {
+          select: {
+            name: true,
+          },
+        },
         _count: {
           select: { messages: true },
         },

@@ -146,14 +146,39 @@ export default function AdminDashboard() {
           description={`${stats?.openTickets || 0} ticket(s) ouvert(s)`}
         />
         <AdminLink
-          href="/admin/analytics"
-          title="📈 Analytics"
-          description="Statistiques détaillées"
+          href="/admin/errors"
+          title="🚨 Erreurs"
+          description="Monitoring bugs & erreurs"
         />
         <AdminLink
-          href="/admin/logs"
-          title="📋 Logs"
-          description="Audit trail global"
+          href="/admin/activity"
+          title="📊 Activité"
+          description="Journal des actions"
+        />
+        <AdminLink
+          href="/admin/interactions"
+          title="💬 Interactions"
+          description="Feedback & demandes"
+        />
+        <AdminLink
+          href="/admin/usage"
+          title="📈 Usage"
+          description="Statistiques features"
+        />
+        <AdminLink
+          href="/admin/performance"
+          title="⚡ Performance"
+          description="Métriques système"
+        />
+        <AdminLink
+          href="/admin/webhooks"
+          title="🔔 Webhooks"
+          description="Alertes & notifications"
+        />
+        <AdminLink
+          href="/admin/analytics"
+          title="📊 Analytics"
+          description="Statistiques détaillées"
         />
       </div>
 
