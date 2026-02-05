@@ -8,13 +8,15 @@ import { prisma } from '@/lib/prisma'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authConfig)
     if (!session?.user?.id) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
+
+    const { id } = await params
 
     const salon = await prisma.salon.findUnique({
       where: { userId: session.user.id },
@@ -26,7 +28,7 @@ export async function GET(
 
     const invoice = await prisma.invoice.findFirst({
       where: {
-        id: params.id,
+        id: id,
         salonId: salon.id,
         deletedAt: null,
       },

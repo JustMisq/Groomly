@@ -101,8 +101,9 @@ export default function Home() {
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Par mois</h3>
               <p className="text-gray-600 mb-6">Parfait pour tester</p>
               <div className="mb-6">
-                <span className="text-5xl font-bold text-gray-900">15€</span>
-                <span className="text-gray-600">/mois</span>
+                <span className="text-5xl font-bold text-gray-900">18,45€</span>
+                <span className="text-gray-600">/mois TTC</span>
+                <p className="text-xs text-gray-500 mt-2">15€ HT + 23% IVA</p>
               </div>
               <ul className="space-y-4 mb-8 text-gray-700">
                 <li className="flex items-center gap-2">✓ Gestion illimitée de clients</li>
@@ -126,8 +127,9 @@ export default function Home() {
               <h3 className="text-2xl font-bold text-white mb-2">Par an</h3>
               <p className="text-white/80 mb-6">Meilleure offre</p>
               <div className="mb-6">
-                <span className="text-5xl font-bold text-white">150€</span>
-                <span className="text-white/80">/an</span>
+                <span className="text-5xl font-bold text-white">184,50€</span>
+                <span className="text-white/80">/an TTC</span>
+                <p className="text-xs text-white/80 mt-2">150€ HT + 23% IVA</p>
               </div>
               <ul className="space-y-4 mb-8 text-white">
                 <li className="flex items-center gap-2">✓ Gestion illimitée de clients</li>
@@ -147,9 +149,62 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p>© 2026 Groomly. Tous droits réservés.</p>
+      <footer className="bg-gray-900 text-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            {/* À propos */}
+            <div>
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <span className="text-2xl">✂️</span>
+                <span>Groomly</span>
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Plateforme SaaS pour les toiletteurs au Portugal
+              </p>
+            </div>
+
+            {/* Produit */}
+            <div>
+              <h4 className="font-semibold mb-4">Produit</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li><Link href="/#features" className="hover:text-white">Fonctionnalités</Link></li>
+                <li><Link href="/#pricing" className="hover:text-white">Tarification</Link></li>
+                <li><Link href="/auth/register" className="hover:text-white">Créer un compte</Link></li>
+                <li><Link href="/auth/login" className="hover:text-white">Connexion</Link></li>
+              </ul>
+            </div>
+
+            {/* Légal */}
+            <div>
+              <h4 className="font-semibold mb-4">Légal (Portugal)</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li><Link href="/legal/mentions" className="hover:text-white">Mentions légales</Link></li>
+                <li><Link href="/legal/privacy" className="hover:text-white">Confidentialité</Link></li>
+                <li><Link href="/legal/terms" className="hover:text-white">Conditions</Link></li>
+                <li><Link href="/legal/gdpr" className="hover:text-white">RGPD/LPDP</Link></li>
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h4 className="font-semibold mb-4">Contact</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li><a href="mailto:contact@groomly.pt" className="hover:text-white">contact@groomly.pt</a></li>
+                <li><a href="mailto:support@groomly.pt" className="hover:text-white">support@groomly.pt</a></li>
+                <li><a href="mailto:dpo@groomly.pt" className="hover:text-white">dpo@groomly.pt</a></li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Séparateur */}
+          <div className="border-t border-gray-800 pt-8">
+            <p className="text-gray-400 text-sm text-center">
+              © 2026 Groomly Portugal. Tous droits réservés.
+            </p>
+            <p className="text-gray-500 text-xs text-center mt-2">
+              Conforme à la loi portugaise • LPDP • IVA • RGPD • Código do Consumidor
+            </p>
+          </div>
         </div>
       </footer>
     </main>
