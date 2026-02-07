@@ -141,6 +141,11 @@ export default function AdminDashboard() {
           description="Gérer tous les comptes"
         />
         <AdminLink
+          href="/admin/salons"
+          title="🏢 Salons"
+          description={`${stats?.totalSalons || 0} salon(s)`}
+        />
+        <AdminLink
           href="/admin/tickets"
           title="🎫 Support"
           description={`${stats?.openTickets || 0} ticket(s) ouvert(s)`}

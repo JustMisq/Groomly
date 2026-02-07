@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getToken } from 'next-auth/jwt'
+import { initSentry, setUserContext, clearUserContext } from '@/lib/sentry'
+
+// Initialize Sentry on first middleware call
+let sentryInitialized = false
 
 /**
- * Middleware simple pour logging des performances
- * Le logging détaillé se fera via des fonctions utilitaires
+ * Middleware pour logging des performances et gestion des sessions
+ * Intégration avec Sentry pour le tracking des erreurs
  */
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  // Initialize Sentry once
+  if (!sentryInitialized) {
+    initSentry()
+    sentryInitialized = true
+  }
+
   // Skip pour les assets et fichiers statiques
   const { pathname } = request.nextUrl
 
@@ -13,8 +24,19 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Pour maintenant, on n'ajoute pas de logging ici
-  // Le logging se fera via les route handlers et les utilitaires
+  // Get session and set user context in Sentry
+  try {
+    const token = await getToken({ req: request })
+    if (token?.sub) {
+      setUserContext(token.sub, token.email || undefined, token.name || undefined)
+    } else {
+      clearUserContext()
+    }
+  } catch (error) {
+    // Silently fail if we can't get the token
+    clearUserContext()
+  }
+
   return NextResponse.next()
 }
 

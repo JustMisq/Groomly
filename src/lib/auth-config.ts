@@ -1,8 +1,9 @@
 import { getServerSession } from "next-auth/next"
-import NextAuth from "next-auth"
+import NextAuth, { type NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { logger } from "@/lib/logger"
 
 declare module "next-auth" {
   interface User {
@@ -19,7 +20,17 @@ declare module "next-auth" {
   }
 }
 
-export const authConfig = {
+export const authConfig: NextAuthOptions = {
+  // ✅ SÉCURITÉ: Secret requis pour JWT
+  secret: process.env.NEXTAUTH_SECRET,
+  
+  // ✅ SÉCURITÉ: JWT strategy pour les APIs
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 jours
+    updateAge: 24 * 60 * 60,   // Refresh token après 1 jour d'inactivité
+  },
+
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -29,6 +40,7 @@ export const authConfig = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          logger.warn("AUTH", "Tentative login sans credentials")
           return null
         }
 
@@ -37,6 +49,7 @@ export const authConfig = {
         })
 
         if (!user) {
+          logger.warn("AUTH", `User not found: ${credentials.email}`)
           return null
         }
 
@@ -46,8 +59,11 @@ export const authConfig = {
         )
 
         if (!passwordMatch) {
+          logger.warn("AUTH", `Invalid password for: ${credentials.email}`)
           return null
         }
+
+        logger.info("AUTH", `User logged in: ${user.id}`)
 
         return {
           id: user.id,
@@ -64,7 +80,6 @@ export const authConfig = {
         token.id = user.id
         token.isAdmin = user.isAdmin || false
       }
-      console.log('JWT Callback - Token:', token.id, 'User:', user?.id)
       return token
     },
     session({ session, token }: any) {
@@ -72,13 +87,28 @@ export const authConfig = {
         session.user.id = token.id as string
         session.user.isAdmin = token.isAdmin as boolean
       }
-      console.log('Session Callback - User ID:', session.user?.id, 'Token ID:', token.id)
       return session
     },
   },
   pages: {
     signIn: "/auth/login",
+    error: "/auth/login",
   },
+  // ✅ SÉCURITÉ: Configuration des cookies
+  cookies: {
+    sessionToken: {
+      name: `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60,
+      },
+    },
+  },
+  // ✅ DEBUG en development uniquement
+  debug: process.env.NODE_ENV === 'development',
 }
 
 export const handler = NextAuth(authConfig)

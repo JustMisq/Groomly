@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
+import { logger, getErrorMessage } from '@/lib/logger'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16',
@@ -10,7 +11,7 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
 export async function POST(request: NextRequest) {
   if (!webhookSecret) {
-    console.error('🔴 STRIPE_WEBHOOK_SECRET not configured')
+    logger.error('STRIPE/WEBHOOK', 'STRIPE_WEBHOOK_SECRET not configured')
     return NextResponse.json(
       { error: 'Webhook secret not configured' },
       { status: 500 }
@@ -20,10 +21,8 @@ export async function POST(request: NextRequest) {
   const body = await request.text()
   const signature = request.headers.get('stripe-signature')
 
-  console.log('🔵 Webhook reçu - signature:', signature ? 'OUI' : 'NON')
-
   if (!signature) {
-    console.error('🔴 Pas de signature Stripe')
+    logger.error('STRIPE/WEBHOOK', 'No stripe-signature header found')
     return NextResponse.json(
       { error: 'No signature found' },
       { status: 400 }
@@ -34,9 +33,9 @@ export async function POST(request: NextRequest) {
 
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-    console.log('✅ Signature vérifiée! Événement:', event.type)
+    logger.info('STRIPE/WEBHOOK', `Event verified: ${event.type}`)
   } catch (error) {
-    console.error('🔴 Erreur vérification signature:', error)
+    logger.error('STRIPE/WEBHOOK', 'Signature verification failed', error)
     return NextResponse.json(
       { error: 'Webhook signature verification failed' },
       { status: 400 }
@@ -49,28 +48,23 @@ export async function POST(request: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session
         
         if (session.customer_email && session.subscription) {
-          // Récupérer l'utilisateur par email
           const user = await prisma.user.findUnique({
             where: { email: session.customer_email },
           })
 
           if (user) {
-            // Récupérer les détails de l'abonnement Stripe
             const subscription = await stripe.subscriptions.retrieve(
               session.subscription as string
             )
 
-            // Déterminer le plan (mensuel ou annuel)
             const priceId = subscription.items.data[0]?.price.id
             const plan =
               priceId === process.env.STRIPE_PRICE_ID_MONTHLY
                 ? 'monthly'
                 : 'yearly'
             
-            // Déterminer le prix (15€ par mois ou 150€ par an)
             const price = plan === 'monthly' ? 15 : 150
 
-            // Créer ou mettre à jour l'abonnement
             await prisma.subscription.upsert({
               where: { userId: user.id },
               create: {
@@ -95,7 +89,7 @@ export async function POST(request: NextRequest) {
               },
             })
 
-            console.log(`Subscription created for user ${user.id}`)
+            logger.audit('STRIPE/WEBHOOK', 'SUBSCRIPTION_CREATED', user.id, { plan })
           }
         }
         break
@@ -104,19 +98,17 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription
         
-        // Trouver l'utilisateur par Stripe customer ID
         const subscriptionRecord = await prisma.subscription.findFirst({
           where: { stripeCustomerId: subscription.customer as string },
         })
 
         if (subscriptionRecord) {
-          // Marquer l'abonnement comme annulé
           await prisma.subscription.update({
             where: { id: subscriptionRecord.id },
             data: { status: 'canceled' },
           })
 
-          console.log(`Subscription canceled for user ${subscriptionRecord.userId}`)
+          logger.audit('STRIPE/WEBHOOK', 'SUBSCRIPTION_CANCELED', subscriptionRecord.userId)
         }
         break
       }
@@ -134,7 +126,6 @@ export async function POST(request: NextRequest) {
           })
 
           if (subscriptionRecord) {
-            // Mettre à jour les dates de la période de facturation
             await prisma.subscription.update({
               where: { id: subscriptionRecord.id },
               data: {
@@ -143,19 +134,19 @@ export async function POST(request: NextRequest) {
               },
             })
 
-            console.log(`Invoice paid for subscription ${subscriptionRecord.id}`)
+            logger.audit('STRIPE/WEBHOOK', 'INVOICE_PAID', subscriptionRecord.userId)
           }
         }
         break
       }
 
       default:
-        console.log(`Unhandled event type ${event.type}`)
+        logger.debug('STRIPE/WEBHOOK', `Unhandled event type: ${event.type}`)
     }
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error('Webhook processing error:', error)
+    logger.error('STRIPE/WEBHOOK', 'Webhook processing failed', error)
     return NextResponse.json(
       { error: 'Webhook processing failed' },
       { status: 500 }

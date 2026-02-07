@@ -222,3 +222,102 @@ export async function measurePerformance<T>(
     throw error
   }
 }
+
+/**
+ * ✅ SÉCURITÉ: Fonctions utilitaires pour logs + gestion erreurs
+ */
+
+const isDev = process.env.NODE_ENV === 'development'
+
+function sanitize(data: any): any {
+  if (!data) return data
+  
+  const sensitiveFields = ['password', 'token', 'secret', 'apiKey', 'STRIPE_SECRET_KEY']
+  const stringify = JSON.stringify(data)
+  
+  let sanitized = stringify
+  sensitiveFields.forEach(field => {
+    const regex = new RegExp(`"${field}":\\s*"[^"]*"`, 'gi')
+    sanitized = sanitized.replace(regex, `"${field}": "***"`)
+  })
+  
+  try {
+    return JSON.parse(sanitized)
+  } catch {
+    return data
+  }
+}
+
+function formatMessage(level: string, context: string, message: string, data?: any) {
+  const timestamp = new Date().toISOString()
+  const baseMsg = `[${timestamp}] [${level}] [${context}]`
+  
+  if (data) {
+    try {
+      return `${baseMsg} ${message}\n${JSON.stringify(sanitize(data), null, 2)}`
+    } catch {
+      return `${baseMsg} ${message}`
+    }
+  }
+  return `${baseMsg} ${message}`
+}
+
+export const simpleLogger = {
+  info: (context: string, message: string, data?: any) => {
+    if (isDev) {
+      console.log(formatMessage('INFO', context, message, data))
+    }
+  },
+  warn: (context: string, message: string, data?: any) => {
+    console.warn(formatMessage('WARN', context, message, data))
+  },
+  error: (context: string, message: string, error?: any) => {
+    const errorData = error instanceof Error ? {
+      message: error.message,
+      stack: isDev ? error.stack : undefined,
+      name: error.name,
+    } : error
+    console.error(formatMessage('ERROR', context, message, errorData))
+  },
+  debug: (context: string, message: string, data?: any) => {
+    if (isDev) {
+      console.log(formatMessage('DEBUG', context, message, data))
+    }
+  },
+  audit: (context: string, action: string, userId: string, details?: any) => {
+    const msg = `AUDIT: ${action} by user ${userId}`
+    console.log(formatMessage('AUDIT', context, msg, details))
+  },
+}
+
+export function getErrorMessage(error: any): { message: string; errorId: string } {
+  const errorId = `ERR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  
+  let message = 'Une erreur est survenue'
+  
+  if (isDev && error instanceof Error) {
+    message = error.message
+  }
+  
+  return { message, errorId }
+}
+
+export function logApiCall(
+  method: string,
+  path: string,
+  statusCode: number,
+  duration: number,
+  userId?: string
+) {
+  const statusEmoji = statusCode < 300 ? '✅' : statusCode < 400 ? '⚠️' : '❌'
+  const msg = `${statusEmoji} ${method} ${path} (${statusCode}) ${duration}ms${userId ? ` [${userId}]` : ''}`
+  
+  if (isDev) {
+    console.log(`[API] ${msg}`)
+  } else if (statusCode >= 400) {
+    console.error(`[API] ${msg}`)
+  }
+}
+
+// ✅ Alias for backwards compatibility
+export const logger = simpleLogger

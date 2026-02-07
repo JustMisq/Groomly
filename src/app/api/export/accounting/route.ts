@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authConfig } from '@/lib/auth-config'
 import { prisma } from '@/lib/prisma'
-import { checkRateLimit } from '@/lib/rate-limit'
+import { checkRouteRateLimit } from '@/lib/rate-limit'
 
 /**
  * GET /api/export/accounting - Export comptable CSV (format compatible logiciels comptables)
@@ -10,7 +10,7 @@ import { checkRateLimit } from '@/lib/rate-limit'
 export async function GET(request: NextRequest) {
   try {
     // Rate limit pour les exports
-    const rateLimitResponse = checkRateLimit(request, 'export')
+    const rateLimitResponse = await checkRouteRateLimit(request, 'api')
     if (rateLimitResponse) return rateLimitResponse
 
     const session = await getServerSession(authConfig)

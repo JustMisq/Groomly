@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authConfig } from '@/lib/auth-config'
 import { prisma } from '@/lib/prisma'
+import { animalSchema } from '@/lib/validations'
+import { logger, getErrorMessage, logApiCall } from '@/lib/logger'
+import { z } from 'zod'
 
 // GET /api/animals?clientId=xxx - Récupérer les animaux d'un client ou tous les animaux du salon
 export async function GET(request: NextRequest) {
+  const startTime = Date.now()
   try {
     const session = await getServerSession(authConfig)
     if (!session?.user?.id) {
@@ -14,7 +18,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const clientId = searchParams.get('clientId')
 
-    // Vérifier que le salon existe
     const salon = await prisma.salon.findUnique({
       where: { userId: session.user.id },
     })
@@ -26,7 +29,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Si clientId est fourni, vérifier que le client appartient au salon
     if (clientId) {
       const client = await prisma.client.findFirst({
         where: {
@@ -43,14 +45,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Récupérer les animaux du salon (ou d'un client spécifique)
     const animals = await prisma.animal.findMany({
       where: clientId
-        ? { clientId }
+        ? { clientId, deletedAt: null }
         : {
             client: {
               salonId: salon.id,
             },
+            deletedAt: null,
           },
       include: {
         client: true,
@@ -58,11 +60,17 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
+    const duration = Date.now() - startTime
+    logApiCall('GET', '/api/animals', 200, duration, session.user.id)
+
     return NextResponse.json(animals)
   } catch (error) {
-    console.error('Get animals error:', error)
+    const duration = Date.now() - startTime
+    logApiCall('GET', '/api/animals', 500, duration)
+    const { message, errorId } = getErrorMessage(error)
+    logger.error('API/ANIMALS', `GET failed: ${errorId}`, error)
     return NextResponse.json(
-      { message: 'Error fetching animals', error: String(error) },
+      { message, errorId },
       { status: 500 }
     )
   }
@@ -70,11 +78,10 @@ export async function GET(request: NextRequest) {
 
 // POST /api/animals - Créer un animal
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
   try {
-    console.log('🔵 POST /api/animals')
     const session = await getServerSession(authConfig)
     if (!session?.user?.id) {
-      console.log('❌ No session')
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
@@ -83,7 +90,6 @@ export async function POST(request: NextRequest) {
     })
 
     if (!salon) {
-      console.log('❌ No salon')
       return NextResponse.json(
         { message: 'Salon not found' },
         { status: 404 }
@@ -91,16 +97,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { clientId, name, species, breed, color, dateOfBirth, notes } = body
+    const { clientId, ...animalData } = body
 
-    if (!clientId || !name || !species) {
+    // ✅ SÉCURITÉ: Validation stricte
+    const validatedData = animalSchema.omit({ clientId: true }).parse(animalData)
+
+    if (!clientId) {
       return NextResponse.json(
-        { message: 'clientId, name, and species are required' },
+        { message: 'clientId is required' },
         { status: 400 }
       )
     }
 
-    // Vérifier que le client appartient au salon
     const client = await prisma.client.findFirst({
       where: {
         id: clientId,
@@ -117,29 +125,38 @@ export async function POST(request: NextRequest) {
 
     const animal = await prisma.animal.create({
       data: {
-        name,
-        species,
-        breed: breed || null,
-        color: color || null,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-        notes: notes || null,
+        ...validatedData,
         clientId,
       },
     })
 
-    console.log('✅ Animal created:', animal.id)
+    const duration = Date.now() - startTime
+    logApiCall('POST', '/api/animals', 201, duration, session.user.id)
+    logger.audit('API/ANIMALS', 'ANIMAL_CREATED', session.user.id, { animalId: animal.id })
     return NextResponse.json(animal, { status: 201 })
   } catch (error) {
-    console.error('💥 POST animals error:', error)
+    const duration = Date.now() - startTime
+    logApiCall('POST', '/api/animals', 400, duration)
+
+    if (error instanceof z.ZodError) {
+      logger.warn('API/ANIMALS', 'Validation error', (error as any).issues)
+      return NextResponse.json(
+        { message: 'Invalid data', errors: (error as any).issues },
+        { status: 400 }
+      )
+    }
+
+    const { message, errorId } = getErrorMessage(error)
+    logger.error('API/ANIMALS', `POST failed: ${errorId}`, error)
     return NextResponse.json(
-      { message: 'Error creating animal', error: String(error) },
+      { message, errorId },
       { status: 500 }
     )
   }
 }
 
-// PUT /api/animals - Mettre à jour un animal
 export async function PUT(request: NextRequest) {
+  const startTime = Date.now()
   try {
     const session = await getServerSession(authConfig)
     if (!session?.user?.id) {
@@ -159,9 +176,7 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json()
     const { 
-      id, name, species, breed, color, dateOfBirth, notes,
-      // Nouveaux champs santé
-      temperament, allergies, healthNotes, groomingNotes, weight 
+      id, ...updateData
     } = body
 
     if (!id) {
@@ -171,7 +186,6 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Vérifier que l'animal appartient au salon
     const animal = await prisma.animal.findFirst({
       where: {
         id,
@@ -188,29 +202,35 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    // ✅ SÉCURITÉ: Valider les données de mise à jour
+    const validatedData = animalSchema.omit({ clientId: true }).partial().parse(updateData)
+
     const updatedAnimal = await prisma.animal.update({
       where: { id },
-      data: {
-        name: name || animal.name,
-        species: species || animal.species,
-        breed: breed !== undefined ? breed : animal.breed,
-        color: color !== undefined ? color : animal.color,
-        dateOfBirth: dateOfBirth !== undefined ? (dateOfBirth ? new Date(dateOfBirth) : null) : animal.dateOfBirth,
-        notes: notes !== undefined ? notes : animal.notes,
-        // Nouveaux champs santé
-        temperament: temperament !== undefined ? temperament : animal.temperament,
-        allergies: allergies !== undefined ? allergies : animal.allergies,
-        healthNotes: healthNotes !== undefined ? healthNotes : animal.healthNotes,
-        groomingNotes: groomingNotes !== undefined ? groomingNotes : animal.groomingNotes,
-        weight: weight !== undefined ? weight : animal.weight,
-      },
+      data: validatedData,
     })
+
+    const duration = Date.now() - startTime
+    logApiCall('PUT', '/api/animals', 200, duration, session.user.id)
+    logger.audit('API/ANIMALS', 'ANIMAL_UPDATED', session.user.id, { animalId: id })
 
     return NextResponse.json(updatedAnimal)
   } catch (error) {
-    console.error('💥 PUT animal error:', error)
+    const duration = Date.now() - startTime
+    logApiCall('PUT', '/api/animals', 400, duration)
+
+    if (error instanceof z.ZodError) {
+      logger.warn('API/ANIMALS', 'Validation error', (error as any).issues)
+      return NextResponse.json(
+        { message: 'Invalid data', errors: (error as any).issues },
+        { status: 400 }
+      )
+    }
+
+    const { message, errorId } = getErrorMessage(error)
+    logger.error('API/ANIMALS', `PUT failed: ${errorId}`, error)
     return NextResponse.json(
-      { message: 'Error updating animal' },
+      { message, errorId },
       { status: 500 }
     )
   }
@@ -218,6 +238,7 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/animals - Supprimer un animal
 export async function DELETE(request: NextRequest) {
+  const startTime = Date.now()
   try {
     const session = await getServerSession(authConfig)
     if (!session?.user?.id) {
@@ -245,7 +266,6 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Vérifier que l'animal appartient au salon
     const animal = await prisma.animal.findFirst({
       where: {
         id,
@@ -266,11 +286,18 @@ export async function DELETE(request: NextRequest) {
       where: { id },
     })
 
+    const duration = Date.now() - startTime
+    logApiCall('DELETE', '/api/animals', 200, duration, session.user.id)
+    logger.audit('API/ANIMALS', 'ANIMAL_DELETED', session.user.id, { animalId: id })
+
     return NextResponse.json({ message: 'Animal deleted successfully' })
   } catch (error) {
-    console.error('💥 DELETE animal error:', error)
+    const duration = Date.now() - startTime
+    logApiCall('DELETE', '/api/animals', 500, duration)
+    const { message, errorId } = getErrorMessage(error)
+    logger.error('API/ANIMALS', `DELETE failed: ${errorId}`, error)
     return NextResponse.json(
-      { message: 'Error deleting animal' },
+      { message, errorId },
       { status: 500 }
     )
   }

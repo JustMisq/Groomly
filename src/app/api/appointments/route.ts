@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authConfig } from '@/lib/auth-config'
 import { prisma } from '@/lib/prisma'
-import { checkRateLimit } from '@/lib/rate-limit'
+import { checkRouteRateLimit } from '@/lib/rate-limit'
 import { appointmentSchema, validateRequest } from '@/lib/validations'
 
 // Constantes pour la gestion des annulations
@@ -68,8 +68,8 @@ export async function GET(request: NextRequest) {
 // POST /api/appointments
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting
-    const rateLimitResponse = checkRateLimit(request, 'create')
+    // Rate limiting - check API rate limit
+    const rateLimitResponse = await checkRouteRateLimit(request, 'api')
     if (rateLimitResponse) return rateLimitResponse
 
     const session = await getServerSession(authConfig)
