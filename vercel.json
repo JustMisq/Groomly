@@ -1,5 +1,6 @@
 {
   "buildCommand": "prisma generate && next build",
+  "outputDirectory": ".next",
   "env": {
     "SKIP_ENV_VALIDATION": "true"
   }
